@@ -1,62 +1,60 @@
-# Routing with Shortest Path
+# Routing Game
 
-A web-based routing game where players navigate through a grid to find the shortest path from start to end point.
+A Python implementation of the Routing Game using Tkinter for the GUI. The game challenges players to find the shortest path from start to end in a grid while collecting points along the way.
 
 ## Features
 
-- Grid-based routing game with configurable grid size
-- Knight movement option
-- Hover assistance for possible moves
-- Leaderboard system
-- Player login and progress tracking
-- Multiple difficulty levels
-- Visual path tracking
-- Game over detection
-- Exit functionality
+- Grid-based gameplay with customizable grid sizes (6x6 to 9x9)
+- Random point values (100-800) assigned to each cell
+- Knight movement option for advanced gameplay
+- Hover assistance to show possible moves
+- Hint system with free and purchasable hints
+- Leaderboard system to track high scores
+- Multiple levels with increasing difficulty
 
-## Game Rules
+## Requirements
 
-1. Start from the top-left corner (0,0)
-2. Move to the bottom-right corner (n-1,n-1)
-3. Can only move to adjacent cells (up, down, left, right)
-4. Cannot move through blocked cells
-5. Cannot reuse already routed cells
-6. Game ends if no valid moves are available
-7. Score is based on the length of the path taken
+- Python 3.x
+- Tkinter (usually comes with Python)
 
-## Technical Stack
+## Installation
 
-- HTML5
-- CSS3
-- JavaScript (ES6+)
-- Local Storage for leaderboard data
+1. Clone this repository or download the source files
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Files Structure
+## How to Play
 
-- `index.html` - Main game interface
-- `styles.css` - Game styling
-- `game.js` - Core game logic
-- `leaderboard.js` - Leaderboard functionality
+1. Run the game:
+   ```bash
+   python routing_game.py
+   ```
 
-## Setup
-
-1. Clone the repository
-2. Open `index.html` in a web browser
-3. Enter player name and select grid size
-4. Click "Start Game" to begin
+2. Enter your name and select a grid size on the login screen
+3. Click "Start Game" to begin
+4. Navigate from the start (S) to the end (E) cell
+5. Collect points by passing through cells with numbers
+6. Use hints and special movement options to help you find the optimal path
+7. Try to find the shortest path for bonus points!
 
 ## Controls
 
 - Click on cells to move
-- Use arrow keys for movement (if enabled)
-- Toggle knight movement and hover assistance before first move
-- Use hint button for assistance
-- Use erase button to undo moves
-- Exit button to return to login screen
+- Use the "Get Hint" button for free hints
+- Buy additional hints with RoutingCoins
+- Toggle Knight Movement before starting
+- Enable/disable Hover Assistance
+- Exit game to save progress
 
-## Version History
+## Scoring System
 
-- v1.0.0 - Initial release with core game features
-- v1.1.0 - Added knight movement and hover assistance
-- v1.2.0 - Added leaderboard and player login
-- v1.3.0 - Added game over detection and exit functionality 
+- Base points for finding a valid path
+- Bonus points for finding the shortest path
+- Additional points from cells in your path
+- Grid size multipliers for higher difficulty levels
+
+## Leaderboard
+
+The game maintains a leaderboard of the top 10 players, sorted by total RoutingCoins earned. The leaderboard is automatically saved and loaded between sessions. 

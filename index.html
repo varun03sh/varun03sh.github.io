@@ -7,28 +7,18 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="login-screen" class="login-screen">
+    <div id="login-screen" class="screen">
         <div class="login-container">
-            <h2>Welcome to Routing Game</h2>
+            <h1>Routing Game</h1>
             <div class="login-form">
-                <div class="form-group">
-                    <label for="player-name">Enter Your Name:</label>
-                    <input type="text" id="player-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="grid-size">Select Grid Size:</label>
-                    <select id="grid-size" required>
-                        <option value="6">6x6</option>
-                        <option value="7">7x7</option>
-                        <option value="8">8x8</option>
-                        <option value="9">9x9</option>
-                    </select>
-                </div>
+                <input type="text" id="player-name" placeholder="Enter your name" required>
+                <select id="grid-size">
+                    <option value="6">6x6 Grid</option>
+                    <option value="7">7x7 Grid</option>
+                    <option value="8">8x8 Grid</option>
+                    <option value="9">9x9 Grid</option>
+                </select>
                 <button id="start-game">Start Game</button>
-            </div>
-            <div class="leaderboard">
-                <h3>Leaderboard</h3>
-                <div id="leaderboard-list"></div>
             </div>
         </div>
     </div>
@@ -39,33 +29,60 @@
                 <span>Player: <span id="player-display"></span></span>
                 <span>Level: <span id="current-level">1</span></span>
                 <span>RoutingCoins: <span id="routing-coins">2000</span></span>
+            </div>
+            <div class="stats">
                 <span>Hints Left: <span id="hints-left">4</span></span>
+                <span>Path Length: <span id="path-length">0</span></span>
             </div>
             <div class="score">
-                <span>Current Path Length: <span id="path-length">0</span></span>
-                <span>Shortest Path Length: <span id="shortest-path">0</span></span>
-            </div>
-            <div class="game-options">
-                <label class="toggle-switch">
-                    <input type="checkbox" id="knight-movement">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Enable Knight Movement</span>
-                </label>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="hover-assistance" checked>
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Enable Hover Assistance</span>
-                </label>
+                <span id="score-display">Score: 0 (Path Length: 0)</span>
             </div>
         </div>
         
-        <div class="game-grid" id="game-grid"></div>
+        <div class="game-info">
+            <div class="points-system">
+                <h3>Points System</h3>
+                <ul>
+                    <li>Shortest Path: 200 RoutingCoins (with hover) / 800 RoutingCoins (without hover)</li>
+                    <li>Valid Path: +400 RoutingCoins</li>
+                    <li>Cell Points: -300 to +300 per cell</li>
+                    <li>Grid Size Multipliers: 6x6 (1.0x), 7x7 (1.1x), 8x8 (1.2x), 9x9 (1.3x)</li>
+                    <li>Penalty: -75 RoutingCoins per step beyond twice shortest path</li>
+                </ul>
+            </div>
+            <div class="game-aim">
+                <h3>Game Aim</h3>
+                <p>Guide your player from the start point (top-left) to the end point (bottom-right) while collecting maximum virtual coins. Each cell has a point value that adds to your total score. Choose between taking the shortest path for a higher base reward or exploring high-point cells for potentially greater total rewards!</p>
+            </div>
+        </div>
+        
+        <div class="game-content">
+            <div class="game-grid" id="game-grid"></div>
+            
+            <div class="step-history">
+                <h3>Step History</h3>
+                <div class="step-list" id="step-list"></div>
+            </div>
+        </div>
         
         <div class="game-controls">
             <button id="hint-btn">Get Hint (Free: 4 left)</button>
             <button id="buy-hint-btn">Buy Hint (400 RoutingCoins)</button>
+            <button id="restart-btn">Restart Level</button>
             <button id="next-level-btn" disabled>Next Level</button>
             <button id="exit-game-btn" class="exit-btn">Exit Game</button>
+        </div>
+        <div class="game-options">
+            <label class="toggle-switch">
+                <input type="checkbox" id="knight-movement">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Enable Knight Movement</span>
+            </label>
+            <label class="toggle-switch">
+                <input type="checkbox" id="hover-assistance" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Enable Hover Assistance</span>
+            </label>
         </div>
     </div>
     <script src="leaderboard.js"></script>

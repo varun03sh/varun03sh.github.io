@@ -1,9 +1,11 @@
 class RoutingGame {
     constructor() {
-        this.leaderboard = new Leaderboard();
+        // this.leaderboard = new Leaderboard();
         this.playerName = '';
         this.gridSize = 6;
         this.setupLoginScreen();
+        this.cellPoints = []; // Array to store points for each cell
+        this.totalPoints = 0; // Total points collected in current path
     }
 
     setupLoginScreen() {
@@ -14,7 +16,7 @@ class RoutingGame {
         const gridSizeSelect = document.getElementById('grid-size');
 
         // Show leaderboard
-        this.leaderboard.renderLeaderboard();
+        // this.leaderboard.renderLeaderboard();
 
         startButton.addEventListener('click', () => {
             const name = playerNameInput.value.trim();
@@ -23,8 +25,16 @@ class RoutingGame {
                 return;
             }
 
+            // Reset all game state
             this.playerName = name;
             this.gridSize = parseInt(gridSizeSelect.value);
+            this.currentLevel = 1;
+            this.routingCoins = 2000;
+            this.hintsLeft = 4;
+            this.path = [[0, 0]];
+            this.playerPosition = [0, 0];
+            this.hasStartedMoving = false;
+            this.totalPoints = 0;
             
             // Set CSS variable for grid size
             document.documentElement.style.setProperty('--grid-size', this.gridSize);
@@ -38,30 +48,90 @@ class RoutingGame {
             
             // Update player display
             document.getElementById('player-display').textContent = this.playerName;
+            
+            // Reset and enable controls
+            this.hintBtn.disabled = false;
+            this.hintBtn.textContent = 'Get Hint (Free: 4 left)';
+            this.nextLevelBtn.disabled = true;
+            this.knightMovementToggle.disabled = false;
+            this.hoverAssistanceToggle.disabled = false;
+            this.knightMovementToggle.checked = false;
+            this.hoverAssistanceToggle.checked = true;
+            
+            // Reset UI elements
+            this.updateUI();
+            this.updateScore();
+            this.updateStepHistory();
+            
+            // Generate new grid and render
+            this.generateGrid();
+            this.findShortestPath();
+            this.renderGrid();
+        });
+    }
+
+    setupGameScreen() {
+        const gameScreen = document.getElementById('game-screen');
+        const loginScreen = document.getElementById('login-screen');
+        const exitButton = document.getElementById('exit-game');
+        const nextLevelButton = document.getElementById('next-level');
+        const hintButton = document.getElementById('hint');
+        const knightMovementToggle = document.getElementById('knight-movement');
+        const hoverAssistanceToggle = document.getElementById('hover-assistance');
+        const resetButton = document.getElementById('reset-game');
+        // const refreshLeaderboardBtn = document.getElementById('refresh-leaderboard');
+        // const resetLeaderboardBtn = document.getElementById('reset-leaderboard');
+
+        // Initialize UI elements
+        this.nextLevelBtn = nextLevelButton;
+        this.hintBtn = hintButton;
+        this.knightMovementToggle = knightMovementToggle;
+        this.hoverAssistanceToggle = hoverAssistanceToggle;
+        this.scoreDisplay = document.getElementById('score-display');
+        this.stepHistory = document.getElementById('step-history');
+        // this.refreshLeaderboardBtn = refreshLeaderboardBtn;
+        // this.resetLeaderboardBtn = resetLeaderboardBtn;
+
+        // Exit game button
+        exitButton.addEventListener('click', () => {
+            // Reset game state
+            this.initializeGameState();
+            
+            // Reset player name and clear input
+            this.playerName = '';
+            document.getElementById('player-name').value = '';
+            
+            // Reset UI elements
+            this.updateUI();
+            this.updateScore();
+            this.updateStepHistory();
+            
+            // Hide game screen and show login screen
+            gameScreen.style.display = 'none';
+            loginScreen.style.display = 'block';
+            
+            // Reset leaderboard display
+            // this.leaderboard.renderLeaderboard();
         });
     }
 
     initializeGameState() {
         this.grid = [];
-        this.currentLevel = 1;
-        this.routingCoins = 2000;
-        this.hintsLeft = 4;
-        this.playerPosition = [0, 0];
-        this.path = [[0, 0]];
         this.shortestPath = [];
         this.shortestPathLength = 0;
-        this.isDragging = false;
         this.isErasing = false;
         this.gameGrid = document.getElementById('game-grid');
         this.currentLevelElement = document.getElementById('current-level');
         this.routingCoinsElement = document.getElementById('routing-coins');
         this.hintsLeftElement = document.getElementById('hints-left');
         this.pathLengthElement = document.getElementById('path-length');
-        this.shortestPathElement = document.getElementById('shortest-path');
+        this.scoreDisplay = document.getElementById('score-display');
+        this.stepList = document.getElementById('step-list');
         this.hintBtn = document.getElementById('hint-btn');
         this.buyHintBtn = document.getElementById('buy-hint-btn');
         this.nextLevelBtn = document.getElementById('next-level-btn');
         this.exitGameBtn = document.getElementById('exit-game-btn');
+        this.restartBtn = document.getElementById('restart-btn');
         this.lastRoutedCell = null;
         this.possibleMovesTimeout = null;
         this.knightMovementEnabled = false;
@@ -69,6 +139,8 @@ class RoutingGame {
         this.hoverAssistanceEnabled = true;
         this.hoverAssistanceToggle = document.getElementById('hover-assistance');
         this.hasStartedMoving = false;
+        this.totalPoints = 0;
+        // this.resetLeaderboardBtn = document.getElementById('reset-leaderboard');
 
         this.initializeGame();
         this.setupEventListeners();
@@ -82,32 +154,37 @@ class RoutingGame {
     }
 
     generateGrid() {
-        const density = 0.25 + (this.currentLevel * 0.02);
-        this.grid = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(1));
-
-        // Block cells randomly
+        this.grid = [];
+        this.cellPoints = [];
         for (let i = 0; i < this.gridSize; i++) {
+            this.grid[i] = [];
+            this.cellPoints[i] = [];
             for (let j = 0; j < this.gridSize; j++) {
-                if (Math.random() < density && !(i === 0 && j === 0) && !(i === this.gridSize - 1 && j === this.gridSize - 1)) {
-                    this.grid[i][j] = 0;
-                }
-            }
-        }
-
-        // Ensure at least 4 valid paths exist
-        while (!this.hasEnoughPaths()) {
-            this.grid = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(1));
-            for (let i = 0; i < this.gridSize; i++) {
-                for (let j = 0; j < this.gridSize; j++) {
-                    if (Math.random() < density && !(i === 0 && j === 0) && !(i === this.gridSize - 1 && j === this.gridSize - 1)) {
-                        this.grid[i][j] = 0;
+                if (i === 0 && j === 0) {
+                    this.grid[i][j] = 1;
+                    this.cellPoints[i][j] = 0;
+                } else if (i === this.gridSize - 1 && j === this.gridSize - 1) {
+                    this.grid[i][j] = 1;
+                    this.cellPoints[i][j] = 0;
+                } else {
+                    this.grid[i][j] = Math.random() > 0.2 ? 1 : 0;
+                    if (this.grid[i][j] === 1) {
+                        // Generate random number between -300 and 300
+                        this.cellPoints[i][j] = Math.floor(Math.random() * 601) - 300;
+                    } else {
+                        this.cellPoints[i][j] = 0;
                     }
                 }
             }
         }
+        
+        // Ensure valid paths exist
+        while (!this.hasValidPaths()) {
+            this.generateGrid();
+        }
     }
 
-    hasEnoughPaths() {
+    hasValidPaths() {
         const paths = this.findAllPaths();
         return paths.length >= 4;
     }
@@ -121,7 +198,7 @@ class RoutingGame {
                 paths.push([...currentPath]);
                 return;
             }
-
+            
             const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
             for (const [dx, dy] of directions) {
                 const newX = x + dx;
@@ -135,7 +212,7 @@ class RoutingGame {
                 }
             }
         };
-
+        
         dfs(0, 0, [[0, 0]]);
         return paths;
     }
@@ -181,14 +258,9 @@ class RoutingGame {
         this.hintBtn.addEventListener('click', () => this.getHint());
         this.buyHintBtn.addEventListener('click', () => this.buyHint());
         this.nextLevelBtn.addEventListener('click', () => this.nextLevel());
+        this.restartBtn.addEventListener('click', () => this.restartLevel());
         
-        // Add drag event listeners
-        this.gameGrid.addEventListener('mousedown', (e) => this.handleDragStart(e));
-        this.gameGrid.addEventListener('mousemove', (e) => this.handleDragMove(e));
-        this.gameGrid.addEventListener('mouseup', () => this.handleDragEnd());
-        this.gameGrid.addEventListener('mouseleave', () => this.handleDragEnd());
-        
-        // Add right-click and shift key listeners
+        // Add right-click and shift key listeners for erasing
         this.gameGrid.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             this.handleErase();
@@ -227,30 +299,12 @@ class RoutingGame {
             }
             
             this.hoverAssistanceEnabled = this.hoverAssistanceToggle.checked;
-            
-            // Update event listeners for the last routed cell
-            const lastCell = this.path[this.path.length - 1];
-            if (lastCell) {
-                const cell = document.querySelector(`[data-x="${lastCell[0]}"][data-y="${lastCell[1]}"]`);
-                if (cell) {
-                    // Remove existing event listeners
-                    const newCell = cell.cloneNode(true);
-                    cell.parentNode.replaceChild(newCell, cell);
-                    
-                    // Add new event listeners if hover assistance is enabled
-                    if (this.hoverAssistanceEnabled) {
-                        newCell.addEventListener('mouseenter', () => this.showPossibleMoves(lastCell[0], lastCell[1]));
-                        newCell.addEventListener('mouseleave', () => this.clearPossibleMoves());
-                    }
-                    
-                    // Add click event listener
-                    newCell.addEventListener('click', () => this.handleCellClick(lastCell[0], lastCell[1]));
-                }
-            }
+            this.renderGrid();
         });
 
         // Add exit game button listener
         this.exitGameBtn.addEventListener('click', () => this.exitGame());
+        // this.resetLeaderboardBtn.addEventListener('click', () => this.resetLeaderboard());
     }
 
     getHint() {
@@ -309,7 +363,6 @@ class RoutingGame {
         this.routingCoinsElement.textContent = this.routingCoins;
         this.hintsLeftElement.textContent = this.hintsLeft;
         this.pathLengthElement.textContent = this.path.length - 1;
-        this.shortestPathElement.textContent = this.shortestPathLength;
     }
 
     renderGrid() {
@@ -320,6 +373,12 @@ class RoutingGame {
                 cell.className = 'cell';
                 cell.dataset.x = i;
                 cell.dataset.y = j;
+
+                // Display cell points for routable cells
+                if (this.grid[i][j] === 1 && this.cellPoints[i][j] !== 0) {
+                    cell.textContent = this.cellPoints[i][j];
+                    cell.dataset.points = this.cellPoints[i][j];
+                }
 
                 if (i === 0 && j === 0) {
                     cell.classList.add('start');
@@ -342,7 +401,6 @@ class RoutingGame {
                     cell.classList.add('path');
                 }
 
-                // Add hover event for last routed cell only if hover assistance is enabled
                 if (this.isLastRoutedCell(i, j)) {
                     if (this.hoverAssistanceEnabled) {
                         cell.addEventListener('mouseenter', () => this.showPossibleMoves(i, j));
@@ -356,58 +414,17 @@ class RoutingGame {
         }
     }
 
-    handleDragStart(e) {
-        const cell = e.target.closest('.cell');
-        if (!cell) return;
-
-        const x = parseInt(cell.dataset.x);
-        const y = parseInt(cell.dataset.y);
-
-        if (this.isValid(x, y)) {
-            this.isDragging = true;
-            if (this.isErasing) {
-                this.handleErase();
-            } else {
-                this.handleCellClick(x, y);
-            }
-        }
-    }
-
-    handleDragMove(e) {
-        if (!this.isDragging) return;
-
-        const cell = e.target.closest('.cell');
-        if (!cell) return;
-
-        const x = parseInt(cell.dataset.x);
-        const y = parseInt(cell.dataset.y);
-
-        if (this.isValid(x, y)) {
-            if (this.isErasing) {
-                this.handleErase();
-            } else {
-                this.handleCellClick(x, y);
-            }
-        }
-    }
-
-    handleDragEnd() {
-        this.isDragging = false;
-    }
-
     handleErase() {
         if (this.path.length > 1) {
-            // Remove the last position from the path
-            this.path.pop();
-            // Update player position to the new last position
-            this.playerPosition = [...this.path[this.path.length - 1]];
+            const lastCell = this.path.pop();
+            this.playerPosition = this.path[this.path.length - 1];
+            
+            // Subtract points from the erased cell
+            this.totalPoints -= this.cellPoints[lastCell[0]][lastCell[1]];
+            
             this.renderGrid();
-            this.updateUI();
-
-            // Check if we're in a dead end after erasing
-            if (!this.hasValidMoves()) {
-                this.handleGameOver();
-            }
+            this.updateScore();
+            this.updateStepHistory();
         }
     }
 
@@ -444,8 +461,14 @@ class RoutingGame {
 
             this.playerPosition = [x, y];
             this.path.push([x, y]);
+            
+            // Add points from the cell to total points
+            this.totalPoints += this.cellPoints[x][y];
+            
             this.renderGrid();
             this.updateUI();
+            this.updateScore();
+            this.updateStepHistory();
 
             if (x === this.gridSize - 1 && y === this.gridSize - 1) {
                 this.handleWin();
@@ -458,32 +481,42 @@ class RoutingGame {
     handleWin() {
         const pathLength = this.path.length - 1;
         let bonus = 0;
-        
-        if (pathLength === this.shortestPathLength) {
-            // Base points for shortest path
-            const basePoints = this.hoverAssistanceEnabled ? 1000 : 2500;
-            
-            // Apply grid size multiplier
-            const multipliers = {
-                6: 1.0,
-                7: 1.1,
-                8: 1.2,
-                9: 1.3
-            };
-            
-            bonus = Math.round(basePoints * multipliers[this.gridSize]);
-            this.routingCoins += bonus;
-            alert(`Congratulations! You found the shortest path! +${bonus} RoutingCoins`);
-        } else {
-            bonus = 400;
-            this.routingCoins += bonus;
-            alert('Good job! You found a valid path. +400 RoutingCoins');
+        let virtualCoins = 0;
+        let penalty = 0;
+
+        // Calculate virtual coins from cell points
+        this.path.forEach(([x, y]) => {
+            if (this.grid[x][y] === 1) {
+                virtualCoins += this.cellPoints[x][y];
+            }
+        });
+
+        // Calculate penalty for steps beyond twice the shortest path
+        if (pathLength > this.shortestPathLength * 2) {
+            penalty = (pathLength - (this.shortestPathLength * 2)) * 75;
+            virtualCoins -= penalty;
         }
 
-        // Update leaderboard
-        this.leaderboard.addPlayer(this.playerName, this.gridSize, this.routingCoins);
-        this.leaderboard.renderLeaderboard();
+        if (pathLength === this.shortestPathLength) {
+            const basePoints = this.hoverAssistanceEnabled ? 200 : 800;
+            const multipliers = { 6: 1.0, 7: 1.1, 8: 1.2, 9: 1.3 };
+            bonus = Math.floor(basePoints * multipliers[this.gridSize]);
+            alert(`Congratulations! You found the shortest path!\n\n` +
+                  `Base Bonus: +${bonus} RoutingCoins\n` +
+                  `Virtual Coins from Path: +${virtualCoins + penalty}\n` +
+                  `Penalty for Extra Steps: -${penalty}\n` +
+                  `Total Virtual Coins: ${bonus + virtualCoins}`);
+        } else {
+            bonus = 100;
+            alert(`Good job! You found a valid path.\n\n` +
+                  `Base Bonus: +${bonus} RoutingCoins\n` +
+                  `Virtual Coins from Path: +${virtualCoins + penalty}\n` +
+                  `Penalty for Extra Steps: -${penalty}\n` +
+                  `Total Virtual Coins: ${bonus + virtualCoins}`);
+        }
 
+        this.routingCoins += bonus;
+        // this.leaderboard.addPlayer(this.playerName, this.gridSize, this.routingCoins);
         this.nextLevelBtn.disabled = false;
     }
 
@@ -503,15 +536,22 @@ class RoutingGame {
     }
 
     restartLevel() {
+        // Reset game state while keeping the same grid configuration
         this.path = [[0, 0]];
         this.playerPosition = [0, 0];
         this.hasStartedMoving = false;
         this.knightMovementToggle.disabled = false;
         this.hoverAssistanceToggle.disabled = false;
-        this.initializeGame();
+        this.totalPoints = 0;
         this.nextLevelBtn.disabled = true;
         this.hintBtn.disabled = false;
         this.hintBtn.textContent = 'Get Hint (Free: 4 left)';
+        
+        // Update UI and render grid
+        this.updateUI();
+        this.updateScore();
+        this.updateStepHistory();
+        this.renderGrid();
     }
 
     getPossibleMoves(x, y) {
@@ -575,8 +615,8 @@ class RoutingGame {
     exitGame() {
         if (confirm('Are you sure you want to exit? Your current progress will be saved.')) {
             // Update leaderboard with current score
-            this.leaderboard.addPlayer(this.playerName, this.gridSize, this.routingCoins);
-            this.leaderboard.renderLeaderboard();
+            // this.leaderboard.addPlayer(this.playerName, this.gridSize, this.routingCoins);
+            // this.leaderboard.renderLeaderboard();
 
             // Show login screen and hide game screen
             document.getElementById('login-screen').style.display = 'flex';
@@ -586,6 +626,60 @@ class RoutingGame {
             document.getElementById('player-name').value = '';
             document.getElementById('grid-size').value = '6';
         }
+    }
+
+    updateScore() {
+        const pathLength = this.path.length - 1;
+        const pathScore = (this.shortestPathLength / pathLength) * 100;
+        this.scoreDisplay.textContent = `Score: ${Math.floor(pathScore)} (Path Length: ${pathLength})`;
+    }
+
+    resetLeaderboard() {
+        // Leaderboard functionality disabled
+        alert('Leaderboard functionality is currently disabled.');
+    }
+
+    updateStepHistory() {
+        this.stepList.innerHTML = '';
+        this.path.forEach((step, index) => {
+            const stepItem = document.createElement('div');
+            stepItem.className = 'step-item';
+            
+            const stepNumber = document.createElement('span');
+            stepNumber.className = 'step-number';
+            stepNumber.textContent = `Step ${index + 1}`;
+            
+            const coordinates = document.createElement('span');
+            coordinates.className = 'step-coordinates';
+            coordinates.textContent = `(${step[0]}, ${step[1]})`;
+            
+            const points = document.createElement('span');
+            
+            if (index === 0) {
+                points.className = 'step-points';
+                points.textContent = 'Start';
+            } else if (index === this.path.length - 1 && step[0] === this.gridSize - 1 && step[1] === this.gridSize - 1) {
+                points.className = 'step-points';
+                points.textContent = 'End';
+            } else {
+                const cellPoints = this.cellPoints[step[0]][step[1]];
+                if (cellPoints > 0) {
+                    points.className = 'step-points';
+                    points.textContent = `+${cellPoints} points`;
+                } else if (cellPoints < 0) {
+                    points.className = 'step-penalty';
+                    points.textContent = `${cellPoints} points`;
+                } else {
+                    points.className = 'step-points';
+                    points.textContent = '0 points';
+                }
+            }
+            
+            stepItem.appendChild(stepNumber);
+            stepItem.appendChild(coordinates);
+            stepItem.appendChild(points);
+            this.stepList.appendChild(stepItem);
+        });
     }
 }
 
